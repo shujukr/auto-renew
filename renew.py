@@ -25,6 +25,34 @@ def setup_driver():
     driver = webdriver.Chrome(options=chrome_options)
     return driver
 
+def add_cookies(driver, cookie_string):
+    """添加 Cookie 到浏览器"""
+    if not cookie_string:
+        return False
+    
+    try:
+        # 先访问域名以设置 Cookie
+        driver.get("https://dashboard.katabump.com")
+        time.sleep(2)
+        
+        # 解析并添加 Cookie
+        cookies = cookie_string.split(';')
+        for cookie in cookies:
+            cookie = cookie.strip()
+            if '=' in cookie:
+                name, value = cookie.split('=', 1)
+                driver.add_cookie({
+                    'name': name.strip(),
+                    'value': value.strip(),
+                    'domain': 'dashboard.katabump.com'
+                })
+        
+        print(f"✓ 已添加 {len(cookies)} 个 Cookie")
+        return True
+    except Exception as e:
+        print(f"❌ 添加 Cookie 失败: {e}")
+        return False
+
 def login(driver, username, password):
     """登录网站"""
     if not username or not password:
@@ -168,6 +196,7 @@ def main():
     
     # 从环境变量获取配置
     url = os.getenv('RENEW_URL', 'https://dashboard.katabump.com/servers/edit?id=166361&renew=success')
+    cookies = os.getenv('COOKIES')
     username = os.getenv('USERNAME')
     password = os.getenv('PASSWORD')
     
@@ -180,32 +209,42 @@ def main():
         driver = setup_driver()
         print("✓ 浏览器启动成功")
         
-        # 访问页面
-        print(f"\n2️⃣  正在访问: {url}")
-        driver.get(url)
-        time.sleep(3)
+        # 优先使用 Cookie 方式
+        if cookies:
+            print("\n2️⃣  使用 Cookie 登录方式")
+            add_cookies(driver, cookies)
+            
+            # 访问页面
+            print(f"正在访问: {url}")
+            driver.get(url)
+            time.sleep(3)
+        else:
+            # 访问页面
+            print(f"\n2️⃣  正在访问: {url}")
+            driver.get(url)
+            time.sleep(3)
+            
+            # 检查是否需要登录
+            print("\n3️⃣  检查登录状态...")
+            if "login" in driver.current_url.lower() or driver.find_elements(By.XPATH, "//input[@type='password']"):
+                print("需要使用用户名密码登录")
+                login_success = login(driver, username, password)
+                
+                if login_success:
+                    driver.save_screenshot(f"step2_logged_in_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
+                    print("✓ 登录成功")
+                    
+                    # 登录后重新访问续期页面
+                    driver.get(url)
+                    time.sleep(3)
+                else:
+                    print("❌ 登录失败，尝试继续...")
+            else:
+                print("✓ 无需登录或已通过 Cookie 登录")
         
         # 保存初始截图
         driver.save_screenshot(f"step1_initial_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
         print("✓ 已保存初始截图")
-        
-        # 检查是否需要登录
-        print("\n3️⃣  检查登录状态...")
-        if "login" in driver.current_url.lower() or driver.find_elements(By.XPATH, "//input[@type='password']"):
-            print("需要登录")
-            login_success = login(driver, username, password)
-            
-            if login_success:
-                driver.save_screenshot(f"step2_logged_in_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png")
-                print("✓ 登录成功")
-                
-                # 登录后重新访问续期页面
-                driver.get(url)
-                time.sleep(3)
-            else:
-                print("❌ 登录失败，尝试继续...")
-        else:
-            print("✓ 无需登录或已登录")
         
         # 点击续期按钮
         print("\n4️⃣  正在查找并点击 Renew 按钮...")
