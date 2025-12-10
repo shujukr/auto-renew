@@ -35,6 +35,7 @@ jobs:
     - name: 执行续期任务
       env:
         RENEW_URL: ${{ secrets.RENEW_URL }}
+        COOKIES: ${{ secrets.COOKIES }}
         USERNAME: ${{ secrets.USERNAME }}
         PASSWORD: ${{ secrets.PASSWORD }}
       run: |
