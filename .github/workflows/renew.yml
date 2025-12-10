@@ -2,10 +2,7 @@ name: Auto Renew Server
 
 on:
   schedule:
-    # 每3天执行一次（提前一天），UTC时间02:00（北京时间10:00）
     - cron: '0 2 */3 * *'
-  
-  # 允许手动触发
   workflow_dispatch:
 
 jobs:
@@ -14,7 +11,7 @@ jobs:
     
     steps:
     - name: 检出代码
-      uses: actions/upload-artifact@v4
+      uses: actions/checkout@v3
     
     - name: 设置 Python
       uses: actions/setup-python@v4
@@ -43,7 +40,7 @@ jobs:
     
     - name: 上传截图
       if: always()
-     uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4
       with:
         name: screenshots
         path: '*.png'
