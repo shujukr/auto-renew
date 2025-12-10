@@ -1,0 +1,54 @@
+name: Auto Renew Server
+
+on:
+  schedule:
+    # 每3天执行一次（提前一天），UTC时间02:00（北京时间10:00）
+    - cron: '0 2 */3 * *'
+  
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  renew:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+    
+    - name: 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: 安装依赖
+      run: |
+        pip install -r requirements.txt
+        
+    - name: 安装 Chrome 和 ChromeDriver
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget unzip
+        wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
+        
+    - name: 执行续期任务
+      env:
+        RENEW_URL: ${{ secrets.RENEW_URL }}
+        USERNAME: ${{ secrets.USERNAME }}
+        PASSWORD: ${{ secrets.PASSWORD }}
+      run: |
+        python renew.py
+    
+    - name: 上传截图
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: screenshots
+        path: '*.png'
+        retention-days: 30
+    
+    - name: 发送通知（可选）
+      if: failure()
+      run: |
+        echo "续期任务失败，请检查日志"
